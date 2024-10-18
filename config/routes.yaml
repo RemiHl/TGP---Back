@@ -1,0 +1,10 @@
+controllers:
+    resource:
+        path: ../src/Controller/
+        namespace: App\Controller
+    type: attribute
+
+change_password:
+    path: /api/users/change_password
+    controller: App\Controller\UserController::changePassword
+    methods: [PUT]
