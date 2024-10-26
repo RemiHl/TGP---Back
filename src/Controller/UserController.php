@@ -10,6 +10,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 class UserController extends AbstractController
 {
@@ -39,25 +40,36 @@ class UserController extends AbstractController
     }
 
     #[Route(path: "/api/users", methods: ['POST'])]
-    public function createUser(Request $request): JsonResponse
-    {
-        $data = json_decode($request->getContent(), true);
+    public function createUser(Request $request, ValidatorInterface $validator): JsonResponse
+{
+    $data = json_decode($request->getContent(), true);
 
-        if (!isset($data['email']) || !isset($data['password'])) {
-            return new JsonResponse(['status' => 'Invalid data'], Response::HTTP_BAD_REQUEST);
-        }
-
-        $user = new User();
-        $user->setEmail($data['email']);
-        $hashedPassword = $this->passwordHasher->hashPassword($user, $data['password']);
-        $user->setPassword($hashedPassword);
-        $user->setRoles(['ROLE_USER']);
-
-        $this->entityManager->persist($user);
-        $this->entityManager->flush();
-
-        return new JsonResponse(['status' => 'User created'], Response::HTTP_CREATED);
+    if (!isset($data['email']) || !isset($data['password'])) {
+        return new JsonResponse(['status' => 'Invalid data'], Response::HTTP_BAD_REQUEST);
     }
+
+    $user = new User();
+    $user->setEmail($data['email']);
+    $hashedPassword = $this->passwordHasher->hashPassword($user, $data['password']);
+    $user->setPassword($hashedPassword);
+    $user->setRoles(['ROLE_USER']);
+
+    $errors = $validator->validate($user);
+
+    if (count($errors) > 0) {
+        // Si erreur de validation, on les renvoie au format JSON
+        $errorMessages = [];
+        foreach ($errors as $error) {
+            $errorMessages[] = $error->getMessage();
+        }
+        return new JsonResponse(['status' => 'Validation failed', 'errors' => $errorMessages], Response::HTTP_BAD_REQUEST);
+    }
+
+    $this->entityManager->persist($user);
+    $this->entityManager->flush();
+
+    return new JsonResponse(['status' => 'User created'], Response::HTTP_CREATED);
+}
 
     #[Route(path: "/api/users/change_password", name: "change_password", methods: ["PUT"])]
     public function changePassword(Request $request): Response
