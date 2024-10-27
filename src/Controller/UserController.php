@@ -3,30 +3,31 @@
 namespace App\Controller;
 
 use App\Entity\User;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Repository\UserRepository;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 class UserController extends AbstractController
 {
-    private $entityManager;
+    private $userRepository;
     private $passwordHasher;
 
-    public function __construct(EntityManagerInterface $entityManager, UserPasswordHasherInterface $passwordHasher)
+    public function __construct(UserRepository $userRepository, UserPasswordHasherInterface $passwordHasher)
     {
-        $this->entityManager = $entityManager;
+        $this->userRepository = $userRepository;
         $this->passwordHasher = $passwordHasher;
     }
 
     #[Route(path: "/api/users", name:"api_users", methods: ["GET"])]
-    public function getUsers(EntityManagerInterface $entityManager): JsonResponse
+    public function getUsers(): JsonResponse
     {
-        $users = $entityManager->getRepository(User::class)->findAll();
+        $users = $this->userRepository->findAll();
         $data = [];
 
         foreach ($users as $user) {
@@ -40,62 +41,53 @@ class UserController extends AbstractController
     }
 
     #[Route(path: "/api/users", methods: ['POST'])]
-    public function createUser(Request $request, ValidatorInterface $validator): JsonResponse
-{
-    $data = json_decode($request->getContent(), true);
+    public function createUser(Request $request, ValidatorInterface $validator, JWTTokenManagerInterface $jwtManager): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
 
-    if (!isset($data['email']) || !isset($data['password'])) {
-        return new JsonResponse(['status' => 'Invalid data'], Response::HTTP_BAD_REQUEST);
-    }
-
-    $user = new User();
-    $user->setEmail($data['email']);
-    $hashedPassword = $this->passwordHasher->hashPassword($user, $data['password']);
-    $user->setPassword($hashedPassword);
-    $user->setRoles(['ROLE_USER']);
-
-    $errors = $validator->validate($user);
-
-    if (count($errors) > 0) {
-        // Si erreur de validation, on les renvoie au format JSON
-        $errorMessages = [];
-        foreach ($errors as $error) {
-            $errorMessages[] = $error->getMessage();
+        if (!isset($data['email']) || !isset($data['password'])) {
+            return new JsonResponse(['status' => 'Invalid data'], Response::HTTP_BAD_REQUEST);
         }
-        return new JsonResponse(['status' => 'Validation failed', 'errors' => $errorMessages], Response::HTTP_BAD_REQUEST);
+
+        // Use the repository to create the user
+        $user = $this->userRepository->createUser($data['email'], $data['password']);
+
+        $errors = $validator->validate($user);
+        if (count($errors) > 0) {
+            $errorMessages = [];
+            foreach ($errors as $error) {
+                $errorMessages[] = $error->getMessage();
+            }
+            return new JsonResponse(['status' => 'Validation failed', 'errors' => $errorMessages], Response::HTTP_BAD_REQUEST);
+        }
+        $token = $jwtManager->create($user);
+        error_log('Token: ' . $token);
+
+        return new JsonResponse(['status' => 'User created', 'token' => $token], Response::HTTP_CREATED, ['Access-Control-Allow-Origin' => '*']);
     }
-
-    $this->entityManager->persist($user);
-    $this->entityManager->flush();
-
-    return new JsonResponse(['status' => 'User created'], Response::HTTP_CREATED);
-}
 
     #[Route(path: "/api/users/change_password", name: "change_password", methods: ["PUT"])]
     public function changePassword(Request $request): Response
     {
         $data = json_decode($request->getContent(), true);
+
         if (!isset($data['oldPassword']) || !isset($data['newPassword'])) {
             return $this->json(['message' => 'Invalid input'], Response::HTTP_BAD_REQUEST);
         }
 
         /** @var User $user */
-        $user = $this->getUser(); // Récupérer l'utilisateur actuellement connecté
+        $user = $this->getUser();
         if (!$user) {
             return $this->json(['message' => 'User not authenticated'], Response::HTTP_UNAUTHORIZED);
         }
 
-        // Vérifier si l'ancien mot de passe est correct
+        // Check if the old password is correct
         if (!$this->passwordHasher->isPasswordValid($user, $data['oldPassword'])) {
             return $this->json(['message' => 'Old password is incorrect'], Response::HTTP_BAD_REQUEST);
         }
 
-        // Encoder le nouveau mot de passe
-        $encodedPassword = $this->passwordHasher->hashPassword($user, $data['newPassword']);
-        $user->setPassword($encodedPassword);
-
-        // Sauvegarder dans la base de données
-        $this->entityManager->flush();
+        // Update the password using the repository
+        $this->userRepository->updatePassword($user, $data['newPassword']);
 
         return $this->json(['message' => 'Password changed successfully'], Response::HTTP_OK);
     }
@@ -104,13 +96,13 @@ class UserController extends AbstractController
     public function deleteAccount(): Response
     {
         /** @var User $user */
-        $user = $this->getUser(); // Récupérer l'utilisateur actuellement connecté
+        $user = $this->getUser();
         if (!$user) {
             return $this->json(['message' => 'User not authenticated'], Response::HTTP_UNAUTHORIZED);
         }
 
-        $this->entityManager->remove($user);
-        $this->entityManager->flush();
+        // Delete the user using the repository
+        $this->userRepository->deleteUser($user);
 
         return $this->json(['message' => 'Account deleted successfully'], Response::HTTP_OK);
     }
