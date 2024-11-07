@@ -89,10 +89,10 @@ class UserCrudController extends AbstractController
             return new JsonResponse(['message' => 'Invalid data'], JsonResponse::HTTP_BAD_REQUEST);
         }
 
-        // Hachage du mot de passe
+        // Hachage mot de passe
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
 
-        // Créer l'utilisateur via le UserCrudRepository
+        // Creation utilisateur 
         $this->userCrudRepository->createUser($email, $hashedPassword, ['ROLE_USER']);
 
         return new JsonResponse(['message' => 'User created successfully'], JsonResponse::HTTP_CREATED);

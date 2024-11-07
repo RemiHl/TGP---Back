@@ -28,7 +28,6 @@ class UserRepository extends ServiceEntityRepository
         $user->setPassword($hashedPassword);
         $user->setRoles(['ROLE_USER']);
 
-        // Utiliser l'EntityManager correctement
         $this->getEntityManager()->persist($user);
         $this->getEntityManager()->flush();
 
@@ -40,13 +39,11 @@ class UserRepository extends ServiceEntityRepository
         $hashedPassword = $this->passwordHasher->hashPassword($user, $newPassword);
         $user->setPassword($hashedPassword);
 
-        // Utiliser l'EntityManager correctement
         $this->getEntityManager()->flush();
     }
 
     public function deleteUser(User $user): void
     {
-        // Utiliser l'EntityManager correctement
         $this->getEntityManager()->remove($user);
         $this->getEntityManager()->flush();
     }
