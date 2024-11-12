@@ -47,4 +47,5 @@ when@test:
         - { path: ^/api/users/change_password, roles: ROLE_USER }
         - { path: ^/api/users/delete_account, roles: ROLE_USER }
         - { path: ^/api/admin, roles: ROLE_ADMIN }
+        - { path: ^/api/admin/contact, roles: ROLE_ADMIN }
         - { path: ^/api/, roles: ROLE_USER }

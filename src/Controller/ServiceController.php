@@ -19,7 +19,7 @@ class ServiceController extends AbstractController
         foreach ($services as $service) {
             $data[] = [
                 'id' => $service->getId(),
-                'nom' => $service->getNomDuService(), // Assurez-vous que 'getName' correspond à la méthode correcte dans votre entité 'Service'
+                'nom' => $service->getNomDuService(),
             ];
         }
 

@@ -25,10 +25,10 @@ class AuthController extends AbstractController
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
 
-        // Récupérer le token CSRF depuis les données
+        // Récupérer le CSRF
         $submittedCsrfToken = $data['_csrf_token'] ?? '';
 
-        // Valider le token CSRF
+        // Valider le CSRF
         if (!$csrfTokenManager->isTokenValid(new CsrfToken('authenticate', $submittedCsrfToken))) {
             return new JsonResponse(['message' => 'Token CSRF invalide'], JsonResponse::HTTP_FORBIDDEN);
         }
@@ -36,15 +36,12 @@ class AuthController extends AbstractController
         $email = $data['email'];
         $password = $data['password'];
 
-        // Récupérer l'utilisateur par l'email
         $user = $entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
 
-        // Vérifier que l'utilisateur existe et que le mot de passe est valide
         if (!$user || !$passwordHasher->isPasswordValid($user, $password)) {
             return new JsonResponse(['message' => 'Identifiants incorrects'], 401);
         }
 
-        // Générer le token JWT pour l'utilisateur
         $token = $jwtManager->create($user);
 
         return new JsonResponse(['token' => $token]);

@@ -17,7 +17,6 @@ class DevisController extends AbstractController
     {
         $data = json_decode($request->getContent(), true);
 
-        // Créer une nouvelle instance de Devis
         $devis = new Devis();
         $devis->setNom($data['nom'] ?? null);
         $devis->setPrenom($data['prenom'] ?? null);
@@ -25,19 +24,16 @@ class DevisController extends AbstractController
         $devis->setEntreprise($data['entreprise']);
         $devis->setLocalisation($data['localisation']);
 
-        // Récupérer les services sélectionnés et stocker les noms des services
         $services = $entityManager->getRepository(Service::class)->findBy(['id' => $data['services']]);
         $serviceNames = [];
 
         foreach ($services as $service) {
-            $devis->addService($service); // On associe chaque service au devis
-            $serviceNames[] = $service->getNomDuService(); // Stocker les noms des services
+            $devis->addService($service);
+            $serviceNames[] = $service->getNomDuService();
         }
 
-        // Sauvegarder les noms des services sous forme de chaîne de caractères dans `servicesNames`
         $devis->setServicesNames(implode(', ', $serviceNames));
 
-        // Sauvegarder le devis dans la base de données
         $entityManager->persist($devis);
         $entityManager->flush();
 

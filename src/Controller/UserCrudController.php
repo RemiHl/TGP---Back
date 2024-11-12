@@ -49,7 +49,7 @@ class UserCrudController extends AbstractController
         }
 
         $this->userCrudRepository->deleteUser($user);
-
+        
         return new JsonResponse(['message' => 'User deleted successfully'], JsonResponse::HTTP_OK);
     }
 
@@ -89,10 +89,7 @@ class UserCrudController extends AbstractController
             return new JsonResponse(['message' => 'Invalid data'], JsonResponse::HTTP_BAD_REQUEST);
         }
 
-        // Hachage mot de passe
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-
-        // Creation utilisateur 
         $this->userCrudRepository->createUser($email, $hashedPassword, ['ROLE_USER']);
 
         return new JsonResponse(['message' => 'User created successfully'], JsonResponse::HTTP_CREATED);

@@ -49,7 +49,6 @@ class UserController extends AbstractController
             return new JsonResponse(['status' => 'Invalid data'], Response::HTTP_BAD_REQUEST);
         }
 
-        // Use the repository to create the user
         $user = $this->userRepository->createUser($data['email'], $data['password']);
 
         $errors = $validator->validate($user);
@@ -81,12 +80,10 @@ class UserController extends AbstractController
             return $this->json(['message' => 'User not authenticated'], Response::HTTP_UNAUTHORIZED);
         }
 
-        // Check if the old password is correct
         if (!$this->passwordHasher->isPasswordValid($user, $data['oldPassword'])) {
             return $this->json(['message' => 'Old password is incorrect'], Response::HTTP_BAD_REQUEST);
         }
 
-        // Update the password using the repository
         $this->userRepository->updatePassword($user, $data['newPassword']);
 
         return $this->json(['message' => 'Password changed successfully'], Response::HTTP_OK);
@@ -101,7 +98,6 @@ class UserController extends AbstractController
             return $this->json(['message' => 'User not authenticated'], Response::HTTP_UNAUTHORIZED);
         }
 
-        // Delete the user using the repository
         $this->userRepository->deleteUser($user);
 
         return $this->json(['message' => 'Account deleted successfully'], Response::HTTP_OK);
